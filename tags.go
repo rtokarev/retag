@@ -20,6 +20,10 @@ type TagMaker interface {
 	MakeTag(structureType reflect.Type, fieldIndex int) reflect.StructTag
 }
 
+type FieldIgnorer interface {
+	IgnoreField(structureType reflect.Type, fieldIndex int) bool
+}
+
 // Convert converts the given interface p, to a runtime-generated type.
 // The type is generated on base of source type by the next rules:
 //   - Analogous type with custom tags is generated for structures.
@@ -159,7 +163,9 @@ func makeStructType(structType reflect.Type, maker TagMaker, any bool) result {
 	fields := make([]reflect.StructField, 0, structType.NumField())
 	for i := 0; i < structType.NumField(); i++ {
 		strField := structType.Field(i)
-		if isExported(strField.Name) {
+		if ignorer, ok := maker.(FieldIgnorer); ok && ignorer.IgnoreField(structType, i) {
+			// just ignore this field
+		} else if isExported(strField.Name) {
 			oldType := strField.Type
 			new := getType(oldType, maker, any)
 			strField.Type = new.t
